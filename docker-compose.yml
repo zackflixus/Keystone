@@ -65,7 +65,9 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-noreply@example.com}
     ports:
-      - "8000:5000"
+      # Host binding for the API. Defaults to 8000 for local use; on a server set
+      # BACKEND_BIND=127.0.0.1:<port> so it is not exposed (Docker bypasses ufw).
+      - "${BACKEND_BIND:-8000}:5000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -117,7 +119,9 @@ services:
         VITE_API_URL: ""
     restart: unless-stopped
     ports:
-      - "8080:80"
+      # Host binding for the web app. Defaults to 8080 for local use; on a server set
+      # FRONTEND_BIND=127.0.0.1:<port> and put a reverse proxy (nginx) in front.
+      - "${FRONTEND_BIND:-8080}:80"
     depends_on:
       backend:
         condition: service_healthy

@@ -23,7 +23,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
           script: |
-            cd ~/karya-web
+            cd ~/keystone
             git pull origin main
-            docker compose --env-file .env.production up -d --build
+            docker compose up -d --build
             docker image prune -f
