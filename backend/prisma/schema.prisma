@@ -1,0 +1,582 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+  GUEST
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  REVIEW
+  NEXT_SPRINT
+  DONE
+  VERIFIED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ProjectVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
+enum MemberStatus {
+  INVITED
+  ACTIVE
+}
+
+// Project-level role — separate from workspace role
+// Editor: full read/write within the project
+// Commenter: can view + comment, cannot edit tasks or sections
+// Viewer: read-only, cannot comment or edit
+// Custom: granular permissions defined in ProjectMember.customPermissions JSON
+enum ProjectRole {
+  EDITOR
+  COMMENTER
+  VIEWER
+  CUSTOM
+}
+
+// Models
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  name          String
+  avatar        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  workspaces    WorkspaceMember[]
+  projectMembers ProjectMember[]
+  assignedTasks TaskAssignee[]
+  comments      Comment[]
+  activityLogs  ActivityLog[]
+  attachments   Attachment[]
+  timeEntries   TimeEntry[]
+  invitesSent       WorkspaceInvite[]
+  projectsCreated   Project[]        @relation("ProjectsCreated")
+  addedRecipients   ReportRecipient[]
+  savedRecipients   ReportRecipient[] @relation("ReportRecipientOwner")
+  viewPreferences   UserViewPreference[]
+  rulesCreated      Rule[]           @relation("RulesCreated")
+
+  // Refresh tokens
+  refreshToken  String?
+  refreshTokenExp DateTime?
+
+  // Password reset
+  resetPasswordToken   String?   @unique
+  resetPasswordExpires DateTime?
+}
+
+model Workspace {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  icon        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  members           WorkspaceMember[]
+  projects          Project[]
+  tags              Tag[]
+  invites           WorkspaceInvite[]
+  roles             CustomProjectRole[]
+  reportRecipients  ReportRecipient[]
+  rules             Rule[]
+}
+
+model WorkspaceMember {
+  id              String    @id @default(uuid())
+  role            Role         @default(MEMBER)
+  status          MemberStatus @default(ACTIVE)
+  joinedAt        DateTime?
+  lastInboxSeenAt DateTime?
+  customRoleId    String?
+  customRole      CustomProjectRole? @relation("WorkspaceMemberCustomRole", fields: [customRoleId], references: [id], onDelete: SetNull)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@index([userId])
+  @@index([workspaceId])
+}
+
+model WorkspaceInvite {
+  id            String       @id @default(uuid())
+  email         String
+  role          Role         @default(MEMBER)
+  customRoleId  String?
+  customRole    CustomProjectRole? @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
+  projectIds    String[]     @default([])
+  token         String       @unique
+  status        InviteStatus @default(PENDING)
+  expiresAt     DateTime
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relations
+  workspaceId   String
+  workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedById   String
+  invitedBy     User         @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@unique([email, workspaceId])
+  @@index([email])
+  @@index([token])
+  @@index([workspaceId])
+}
+
+model Project {
+  id          String           @id @default(uuid())
+  name        String
+  description String?
+  icon        String?
+  color       String?
+  views       String[]          @default(["overview", "list", "board", "timeline", "dashboard"])
+  visibility  ProjectVisibility @default(PRIVATE)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  workspaceId  String
+  workspace    Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdById  String?
+  createdBy    User?            @relation("ProjectsCreated", fields: [createdById], references: [id], onDelete: SetNull)
+  board        Board?
+  members      ProjectMember[]
+  customFields CustomField[]
+  viewPreferences UserViewPreference[]
+  rules        Rule[]
+
+  @@index([workspaceId])
+}
+
+enum FieldType {
+  TEXT
+  NUMBER
+  SINGLE_SELECT
+  MULTI_SELECT
+  DATE
+  PEOPLE
+  CHECKBOX
+  TIME_TRACKING
+}
+
+model CustomField {
+  id        String    @id @default(uuid())
+  name      String
+  type      FieldType @default(TEXT)
+  options   Json?     // for SELECT types: [{ value, color }]
+  position  Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  projectId String
+  project   Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  values    CustomFieldValue[]
+
+  @@index([projectId])
+}
+
+model CustomFieldValue {
+  id        String   @id @default(uuid())
+  value     String?  // stores text, number as string, select option value, date ISO, etc.
+
+  fieldId   String
+  field     CustomField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  taskId    String
+  task      Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, taskId])
+  @@index([fieldId])
+  @@index([taskId])
+}
+
+// Reusable named role shared across ALL projects in a workspace.
+// 3 system roles (Editor / Commenter / Viewer) are seeded on workspace creation.
+// Admins can create additional custom roles like "QA Tester", "Client Reviewer".
+// When assigning a member to a project, pick from this workspace-wide pool.
+model CustomProjectRole {
+  id          String   @id @default(uuid())
+  name        String                         // "Editor", "QA Tester", etc.
+  description String?
+  color       String   @default("#6B7280")   // badge color
+  isSystem    Boolean  @default(false)       // true for Editor/Commenter/Viewer — can't delete/rename
+  permissions Json     @default("{}")        // { "task.create": true, "task.delete": false, ... }
+  position    Int      @default(0)           // display order in dropdowns
+  createdAt   DateTime @default(now())
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  members     ProjectMember[]
+  invites     WorkspaceInvite[]
+  workspaceMembers WorkspaceMember[] @relation("WorkspaceMemberCustomRole")
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+model ProjectMember {
+  id          String      @id @default(uuid())
+  role        Role        @default(MEMBER)        // workspace-level role (kept for legacy compat)
+  projectRole ProjectRole @default(EDITOR)        // DEPRECATED — kept for data migration only
+  customPermissions Json?                         // DEPRECATED — migrated into CustomProjectRole.permissions
+  createdAt   DateTime    @default(now())
+
+  // New: points to the named role in CustomProjectRole
+  projectRoleId String?
+  customRole    CustomProjectRole? @relation(fields: [projectRoleId], references: [id], onDelete: SetNull)
+
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([userId])
+  @@index([projectId])
+  @@index([projectRoleId])
+}
+
+model Board {
+  id         String   @id @default(uuid())
+  name       String   @default("Board")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  projectId String   @unique
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  lists     List[]
+
+  @@index([projectId])
+}
+
+model List {
+  id        String   @id @default(uuid())
+  name      String
+  position  Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+
+  @@index([boardId])
+}
+
+enum TaskType {
+  DEFAULT_TASK
+  MILESTONE
+  APPROVAL
+}
+
+model Task {
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  taskType    TaskType   @default(DEFAULT_TASK)
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(LOW)
+  dueDate         DateTime?
+  estimatedTime   Int?       // estimated time in minutes
+  actualTime      Int?       // computed sum of time entries in minutes
+  timerStartedAt  DateTime?  // when the active timer started (null = no timer running)
+  timerStartedBy  String?    // userId of who started the timer
+  createdById     String?    // userId of who created the task — null for tasks that predate this column
+  billable        Boolean?
+  position        Float      @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  listId      String
+  list        List       @relation(fields: [listId], references: [id], onDelete: Cascade)
+  
+  // Self-relation for subtasks
+  parentId    String?
+  parent      Task?      @relation("Subtasks", fields: [parentId], references: [id], onDelete: Cascade)
+  subtasks    Task[]     @relation("Subtasks")
+
+  // Multi-project milestones: when a milestone is added to another project,
+  // a new task is created there with linkedMilestoneId pointing to the original.
+  linkedMilestoneId String?
+  linkedMilestone   Task?   @relation("MilestoneLinks", fields: [linkedMilestoneId], references: [id], onDelete: SetNull)
+  milestoneLinks    Task[]  @relation("MilestoneLinks") // all copies in other projects
+
+  assignees        TaskAssignee[]
+  comments         Comment[]
+  activityLogs     ActivityLog[]
+  attachments      Attachment[]
+  tags             Tag[]
+  customFieldValues CustomFieldValue[]
+  timeEntries      TimeEntry[]
+
+  @@index([listId])
+  @@index([parentId])
+}
+
+model Tag {
+  id          String    @id @default(uuid())
+  name        String
+  color       String    @default("#4573D2")
+  createdAt   DateTime  @default(now())
+  
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  tasks       Task[]
+
+  @@unique([name, workspaceId])
+  @@index([workspaceId])
+}
+
+model TaskAssignee {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, taskId])
+  @@index([userId])
+  @@index([taskId])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([taskId])
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  action    String
+  details   Json?
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([taskId])
+}
+
+model Attachment {
+  id        String   @id @default(uuid())
+  filename  String
+  url       String
+  publicId  String?  // Cloudinary public ID for deletion — e.g. "asana_clone/abc123"
+  mimeType  String
+  size      Int
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([taskId])
+}
+
+model TimeEntry {
+  id        String   @id @default(uuid())
+  minutes   Int
+  note      String?
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+}
+
+// Saved email recipients for sending reports — workspace-scoped
+model UserViewPreference {
+  id               String   @id @default(uuid())
+  colWidths        Json     @default("{}")
+  columnVisibility Json     @default("{}")
+  dashboardWidgets Json?
+  updatedAt        DateTime @updatedAt
+
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([userId])
+  @@index([projectId])
+}
+
+model ReportRecipient {
+  id          String   @id @default(uuid())
+  email       String
+  name        String?
+  createdAt   DateTime @default(now())
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation("ReportRecipientOwner", fields: [userId], references: [id], onDelete: Cascade)
+  addedById   String
+  addedBy     User      @relation(fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@unique([email, workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+}
+
+// ── Rules engine ─────────────────────────────────────────────────────────────
+
+// Transactional outbox for the rules engine. Rows are written in the same
+// transaction as the change that caused them, then drained onto the BullMQ
+// queue by the publisher in modules/rules/outbox.js.
+//
+// Deliberately has no foreign key to Task or Project: an event must survive the
+// deletion of whatever it describes, so identifiers live in `payload` instead.
+model DomainEvent {
+  id          String    @id @default(uuid())
+  type        String
+  payload     Json
+  workspaceId String
+  projectId   String?
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  // Drives the publisher's "oldest unpublished first" scan.
+  @@index([publishedAt, createdAt])
+  @@index([workspaceId, type])
+}
+
+enum RuleRunStatus {
+  SUCCESS
+  FAILED
+  SKIPPED_CONDITION
+  SKIPPED_DEPTH
+  SKIPPED_CHAIN
+}
+
+// A trigger → condition → action automation, scoped to a project or (projectId
+// null) to every project in the workspace. trigger/conditions/actions are JSON
+// because their shape varies per trigger and action type — see
+// modules/rules/ruleRegistry.js, the single source of truth both the engine and
+// (later) the builder UI read from.
+model Rule {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  enabled     Boolean  @default(true)
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projectId   String?
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  trigger     Json      // { type, ...trigger-specific filters e.g. to/from }
+  conditions  Json      // { match: 'ALL'|'ANY', items: [{ field, operator, value }] }
+  actions     Json      // ordered array of { type, value }, applied in sequence
+  templateKey String?   // which built-in template this was created from, if any
+
+  createdById String
+  // Rules execute as their creator, not as whoever triggered the event — see
+  // modules/rules/systemActor.js for why.
+  createdBy   User      @relation("RulesCreated", fields: [createdById], references: [id], onDelete: Cascade)
+
+  runCount    Int       @default(0)
+  failCount   Int       @default(0)
+  // Consecutive (not lifetime) failures — reset to 0 on any SUCCESS. Once this
+  // crosses RULE_AUTO_DISABLE_THRESHOLD, ruleEngine.applyRule turns the rule off
+  // and emails the creator, rather than a broken rule failing silently forever.
+  consecutiveFailCount Int @default(0)
+  autoDisabledAt       DateTime? // set when the engine (not a person) disabled it
+  lastRunAt   DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  runs        RuleRun[]
+
+  @@index([workspaceId, enabled])
+  @@index([projectId, enabled])
+}
+
+// One row per (rule, event) pair the engine ever considered — including skips.
+// The unique constraint below is also the idempotency guard against a BullMQ
+// retry re-applying a rule's actions twice.
+model RuleRun {
+  id            String        @id @default(uuid())
+  ruleId        String
+  rule          Rule          @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  eventId       String
+  // Shared by every event in one cascade — powers the "a rule fires at most
+  // once per chain" loop guard (see ruleEngine.matchEvent).
+  chainId       String
+  taskId        String?
+  status        RuleRunStatus
+  actionResults Json?
+  error         String?
+  durationMs    Int?
+  createdAt     DateTime      @default(now())
+
+  @@unique([ruleId, eventId])
+  @@index([ruleId, createdAt])
+  @@index([ruleId, chainId])
+}

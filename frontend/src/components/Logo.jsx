@@ -1,0 +1,67 @@
+import { useId } from 'react';
+
+/**
+ * Keystone brand mark: a segmented white stone arch locked by a glowing
+ * saffron keystone, on an indigo→violet tile. Keep in sync with
+ * public/favicon.svg.
+ */
+export default function Logo({ size = 32, className = '', title = 'Keystone' }) {
+  // Gradient ids are document-global, so every logo instance on a page
+  // needs its own set.
+  const uid = useId().replace(/:/g, '');
+  const id = (name) => `keystone-${name}-${uid}`;
+
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 64 64"
+      width={size}
+      height={size}
+      className={className}
+      role="img"
+      aria-label={title}
+    >
+      <defs>
+        <linearGradient id={id('tile')} x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" stopColor="#4F46E5" />
+          <stop offset="1" stopColor="#9333EA" />
+        </linearGradient>
+        <linearGradient id={id('stone')} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#FFFFFF" />
+          <stop offset="1" stopColor="#DDD6FE" />
+        </linearGradient>
+        <linearGradient id={id('key')} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#FCD34D" />
+          <stop offset="1" stopColor="#F59E0B" />
+        </linearGradient>
+        <radialGradient id={id('glow')} cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="#FBBF24" stopOpacity="0.75" />
+          <stop offset="1" stopColor="#FBBF24" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+
+      {/* Tile + glass sheen */}
+      <rect width="64" height="64" rx="14" fill={`url(#${id('tile')})`} />
+      <path d="M0 14A14 14 0 0 1 14 0H50Q30 10 0 34Z" fill="#FFFFFF" opacity="0.1" />
+
+      {/* Keystone glow */}
+      <circle cx="32" cy="20.5" r="12" fill={`url(#${id('glow')})`} />
+
+      {/* Arch: pillars + voussoirs */}
+      <g fill={`url(#${id('stone')})`}>
+        <rect x="11" y="37" width="10" height="13" rx="1.5" />
+        <rect x="43" y="37" width="10" height="13" rx="1.5" />
+        <path d="M11 36A21 21 0 0 1 14.59 24.26L22.88 29.85A11 11 0 0 0 21 36Z" />
+        <path d="M15.12 23.51A21 21 0 0 1 24.65 16.33L28.15 25.7A11 11 0 0 0 23.16 29.46Z" />
+        <path d="M39.35 16.33A21 21 0 0 1 48.88 23.51L40.84 29.46A11 11 0 0 0 35.85 25.7Z" />
+        <path d="M49.41 24.26A21 21 0 0 1 53 36L43 36A11 11 0 0 0 41.12 29.85Z" />
+      </g>
+
+      {/* Keystone */}
+      <path
+        d="M25.05 14.6A22.5 22.5 0 0 1 38.95 14.6L35.24 26.01A10.5 10.5 0 0 0 28.76 26.01Z"
+        fill={`url(#${id('key')})`}
+      />
+    </svg>
+  );
+}

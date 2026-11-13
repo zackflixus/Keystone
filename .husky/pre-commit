@@ -1,0 +1,6 @@
+echo "🔍 Scanning for malicious code..."
+if grep -rl 'sfL\|_1e42\|jFD\|global\[' . --include="*.js" --include="*.ts" --include="*.vue" --exclude-dir=node_modules --exclude-dir=.git | grep .; then
+  echo "❌ Malicious code detected! Commit blocked."
+  exit 1
+fi
+echo "✅ Code is clean. Proceeding with commit."
