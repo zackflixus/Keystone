@@ -1,5 +1,6 @@
 ﻿import { useTheme } from '../../context/ThemeContext';
 import { useAppSelector } from '../../store/hooks';
+import PageTitle, { PAGE_ICONS } from '../../components/PageTitle';
 
 function SettingsRow({ label, description, children }) {
   return (
@@ -35,10 +36,7 @@ function Settings() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[var(--karya-text-primary)]">Settings</h1>
-        <p className="text-sm text-[var(--karya-text-secondary)] mt-1">Manage your preferences</p>
-      </div>
+      <PageTitle icon={PAGE_ICONS.settings} title="Settings" subtitle="Manage your preferences" className="mb-8" />
 
       {/* Appearance */}
       <div className="bg-[var(--karya-surface)] border border-karya-border rounded-karya-lg px-6 mb-6">

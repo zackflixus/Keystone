@@ -167,7 +167,7 @@ function Layout() {
   };
 
   const getPageTitle = () => {
-    if (location.pathname === '/') return 'Home';
+    if (location.pathname === '/' || location.pathname === '/dashboard') return 'Home';
     if (location.pathname.includes('/project')) return currentWorkspace?.name || 'Project';
     if (location.pathname.includes('/my-tasks')) return 'My Tasks';
     if (location.pathname.includes('/inbox')) return 'Inbox';

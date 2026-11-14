@@ -4,6 +4,10 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchMyTasks } from '../../store/slices/taskSlice';
 import { useRole } from '../../hooks/useRole';
 import TaskDetail from './TaskDetail';
+import PageTitle, { PAGE_ICONS } from '../../components/PageTitle';
+import DueChip from '../../components/DueChip';
+import KeystoneEmptyState from '../../components/EmptyState';
+import { dueState, isDoneStatus } from '../../utils/dueDate';
 import io from 'socket.io-client';
 
 const TABS = ['All Tasks', 'Upcoming', 'Overdue', 'Completed'];
@@ -68,25 +72,22 @@ function MyTasks() {
     };
   }, [currentWorkspace?.id, user?.id, isWorkspaceAdmin, dispatch]);
 
-  const filterTasks = (tasks, tab) => {
-    return tasks.filter(task => {
-      const now = new Date();
-      const due = task.dueDate ? new Date(task.dueDate) : null;
-      switch (tab) {
-        case 'Upcoming': return task.status !== 'DONE' && due && due >= now;
-        case 'Overdue': return task.status !== 'DONE' && due && due < now;
-        case 'Completed': return task.status === 'DONE';
-        default: return true;
-      }
-    });
+  // Day-based due rules (shared with Home and the List view): a task due today
+  // is "Upcoming", not "Overdue", and VERIFIED counts as completed.
+  const matchesTab = (task, tab) => {
+    const state = dueState(task);
+    switch (tab) {
+      case 'Upcoming': return state === 'today' || state === 'upcoming';
+      case 'Overdue': return state === 'overdue';
+      case 'Completed': return isDoneStatus(task.status);
+      default: return true;
+    }
   };
 
-  const countTasks = (tasks) => ({
-    'All Tasks': tasks.length,
-    'Upcoming': tasks.filter(t => { const d = t.dueDate ? new Date(t.dueDate) : null; return t.status !== 'DONE' && d && d >= new Date(); }).length,
-    'Overdue': tasks.filter(t => { const d = t.dueDate ? new Date(t.dueDate) : null; return t.status !== 'DONE' && d && d < new Date(); }).length,
-    'Completed': tasks.filter(t => t.status === 'DONE').length,
-  });
+  const filterTasks = (tasks, tab) => tasks.filter(task => matchesTab(task, tab));
+
+  const countTasks = (tasks) =>
+    Object.fromEntries(TABS.map(tab => [tab, filterTasks(tasks, tab).length]));
 
   const myFiltered = filterTasks(myTasks, activeTab);
   const myCounts = countTasks(myTasks);
@@ -105,10 +106,12 @@ function MyTasks() {
     <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
       {/* ── My Tasks section ── */}
       <div>
-        <div className="mb-5">
-          <h1 className="text-2xl font-bold text-[var(--karya-text-primary)]">My Tasks</h1>
-          <p className="text-sm text-[var(--karya-text-secondary)] mt-1">Tasks assigned to you across all projects</p>
-        </div>
+        <PageTitle
+          icon={PAGE_ICONS.tasks}
+          title="My Tasks"
+          subtitle="Tasks assigned to you across all projects"
+          className="mb-6"
+        />
 
         <TabBar tabs={TABS} active={activeTab} counts={myCounts} onChange={setActiveTab} />
 
@@ -205,7 +208,7 @@ function TaskList({ tasks, onTaskClick, showAssignee = false }) {
   return (
     <div className="bg-[var(--karya-surface)] border border-[var(--karya-border)] rounded-xl divide-y divide-[var(--karya-border)] overflow-hidden">
       {tasks.map(task => {
-        const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'DONE';
+        const isDone = isDoneStatus(task.status);
         const projectId = task.list?.board?.projectId || task.list?.board?.project?.id;
         const projectName = task.list?.board?.project?.name;
         const projectColor = task.list?.board?.project?.color || '#4F46E5';
@@ -219,9 +222,9 @@ function TaskList({ tasks, onTaskClick, showAssignee = false }) {
           >
             {/* Status circle */}
             <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center mr-3 transition-colors ${
-              task.status === 'DONE' ? 'border-green-500 bg-green-500' : 'border-gray-300 dark:border-gray-600 group-hover:border-karya-blue'
+              isDone ? 'border-green-500 bg-green-500' : 'border-gray-300 dark:border-gray-600 group-hover:border-karya-blue'
             }`}>
-              {task.status === 'DONE' && (
+              {isDone && (
                 <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
@@ -241,7 +244,7 @@ function TaskList({ tasks, onTaskClick, showAssignee = false }) {
 
             {/* Task info */}
             <div className="flex-1 min-w-0">
-              <p className={`text-sm font-medium ${task.status === 'DONE' ? 'text-[var(--karya-text-secondary)]' : 'text-[var(--karya-text-primary)]'} group-hover:text-karya-blue transition-colors truncate`}>
+              <p className={`text-sm font-medium ${isDone ? 'text-[var(--karya-text-secondary)]' : 'text-[var(--karya-text-primary)]'} group-hover:text-karya-blue transition-colors truncate`}>
                 {task.title}
               </p>
               <div className="flex items-center space-x-1.5 mt-0.5">
@@ -255,11 +258,7 @@ function TaskList({ tasks, onTaskClick, showAssignee = false }) {
 
             {/* Right side info */}
             <div className="flex items-center space-x-4 ml-4 flex-shrink-0">
-              {task.dueDate && (
-                <span className={`text-xs font-medium ${isOverdue ? 'text-red-500' : 'text-[var(--karya-text-secondary)]'}`}>
-                  {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </span>
-              )}
+              <DueChip task={task} />
               <div className={`w-2 h-2 rounded-full ${PRIORITY_DOT[task.priority] || PRIORITY_DOT.LOW}`} title={task.priority} />
               <span className={`text-xs font-medium min-w-[70px] text-right ${STATUS_STYLE[task.status]}`}>
                 {STATUS_LABEL[task.status] || task.status?.replace('_', ' ')}
@@ -275,19 +274,11 @@ function TaskList({ tasks, onTaskClick, showAssignee = false }) {
 // ── Empty state ─────────────────────────────────────────────────────────────
 function EmptyState({ tab, message }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
-        <svg className="w-7 h-7 text-[var(--karya-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-        </svg>
-      </div>
-      <p className="text-sm font-semibold text-[var(--karya-text-primary)]">
-        {tab === 'Completed' ? 'No completed tasks yet' : "You're all caught up!"}
-      </p>
-      <p className="text-xs text-[var(--karya-text-secondary)] mt-1">
-        {message || (tab === 'All Tasks' ? 'Tasks assigned to you will appear here' : `No ${tab.toLowerCase()} tasks`)}
-      </p>
-    </div>
+    <KeystoneEmptyState
+      className="py-16"
+      title={tab === 'Completed' ? 'No completed tasks yet' : "You're all caught up!"}
+      message={message || (tab === 'All Tasks' ? 'Tasks assigned to you will appear here' : `No ${tab.toLowerCase()} tasks`)}
+    />
   );
 }
 

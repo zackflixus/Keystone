@@ -1,8 +1,48 @@
-﻿import { useState } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { createWorkspace, setCurrentWorkspace } from '../../store/slices/workspaceSlice';
+import { fetchMyTasks } from '../../store/slices/taskSlice';
 import CreateProjectWizard from '../projects/CreateProjectWizard';
+import TaskDetail from '../tasks/TaskDetail';
+import StatTile, { CARD_CLASS, STAT_ICONS } from '../../components/StatTile';
+import DueChip from '../../components/DueChip';
+import EmptyState from '../../components/EmptyState';
+import { dueState, isDoneStatus } from '../../utils/dueDate';
+
+const PRIORITY_DOT = {
+  HIGH: 'bg-red-500',
+  MEDIUM: 'bg-yellow-400',
+  LOW: 'bg-gray-300 dark:bg-gray-600',
+};
+
+const HERO_GRADIENT = 'linear-gradient(120deg, #4F46E5 0%, #6D28D9 60%, #7C3AED 100%)';
+
+function greetingFor(hour) {
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+// Uses the shared day-based due rules so Home, My Tasks and the List view agree.
+function summarizeMyTasks(tasks, now) {
+  const STATE_ORDER = { overdue: 0, today: 1, upcoming: 2, none: 3 };
+  const open = tasks.filter((t) => !isDoneStatus(t.status));
+
+  return {
+    overdue: open.filter((t) => dueState(t, now) === 'overdue').length,
+    dueToday: open.filter((t) => dueState(t, now) === 'today').length,
+    inProgress: tasks.filter((t) => t.status === 'IN_PROGRESS').length,
+    completed: tasks.filter((t) => isDoneStatus(t.status)).length,
+    // Overdue → due today → upcoming → no date; earliest first inside each group.
+    upNext: [...open]
+      .sort((a, b) =>
+        STATE_ORDER[dueState(a, now)] - STATE_ORDER[dueState(b, now)] ||
+        new Date(a.dueDate || 0) - new Date(b.dueDate || 0))
+      .slice(0, 6),
+  };
+}
 
 function ProjectCard({ project }) {
   const color = project.color || '#4F46E5';
@@ -85,6 +125,25 @@ function Dashboard() {
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [newWorkspace, setNewWorkspace] = useState({ name: '', description: '' });
   const [wsCreating, setWsCreating] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
+
+  const { user } = useAppSelector((state) => state.auth);
+  const { myTasks, myTasksLoading } = useAppSelector((state) => state.task);
+
+  useEffect(() => {
+    if (currentWorkspace?.id) {
+      dispatch(fetchMyTasks({ workspaceId: currentWorkspace.id }));
+    }
+  }, [currentWorkspace?.id, dispatch]);
+
+  const now = new Date();
+  const summary = useMemo(() => summarizeMyTasks(myTasks || [], new Date()), [myTasks]);
+
+  const closeTask = () => {
+    setSelectedTaskId(null);
+    // The panel can change status/due dates — refresh so Home's numbers stay right.
+    if (currentWorkspace?.id) dispatch(fetchMyTasks({ workspaceId: currentWorkspace.id }));
+  };
 
   // Workspaces and projects are fetched centrally by Layout.jsx — no duplicate fetch here
 
@@ -166,37 +225,123 @@ function Dashboard() {
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
-      {/* ── Page header ── */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--karya-text-primary)]">
-            {currentWorkspace.name}
-          </h1>
-          <p className="text-sm text-[var(--karya-text-secondary)] mt-0.5">
-            {projectsLoaded ? `${projects.length} project${projects.length !== 1 ? 's' : ''}` : 'Loading...'}
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Link
-            to={`/workspace/${currentWorkspace.id}`}
-            className="px-3 py-1.5 text-sm font-medium text-[var(--karya-text-secondary)] hover:text-[var(--karya-text-primary)] hover:bg-gray-100 dark:hover:bg-gray-700 rounded-karya transition-colors flex items-center space-x-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span>Members</span>
-          </Link>
-          <button
-            onClick={() => setShowCreateWizard(true)}
-            className="karya-button-primary px-4 py-1.5 text-sm font-medium flex items-center space-x-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <span>New Project</span>
-          </button>
+      {/* ── Greeting hero ── */}
+      <div
+        className="relative overflow-hidden rounded-karya-lg p-6 sm:p-8 mb-6 text-white shadow-karya-pop"
+        style={{ background: HERO_GRADIENT }}
+      >
+        {/* Brand watermark: the Keystone arch */}
+        <svg className="absolute -right-8 -bottom-12 w-64 h-64 pointer-events-none" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M16 56V36a16 16 0 0 1 32 0v20" fill="none" stroke="#FFFFFF" strokeOpacity="0.12" strokeWidth="10" />
+          <path d="M25.05 14.6A22.5 22.5 0 0 1 38.95 14.6L35.24 26.01A10.5 10.5 0 0 0 28.76 26.01Z" fill="#F59E0B" fillOpacity="0.55" />
+        </svg>
+
+        <div className="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-white/70 truncate">
+              {currentWorkspace.name}
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-bold mt-1">
+              {greetingFor(now.getHours())}, {user?.name?.split(' ')[0] || 'there'}
+            </h1>
+            <p className="text-sm text-white/80 mt-1.5">
+              {now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              {!(myTasksLoading && myTasks.length === 0) && (
+                <>
+                  {' · '}
+                  {summary.dueToday || summary.overdue
+                    ? [
+                        summary.dueToday && `${summary.dueToday} due today`,
+                        summary.overdue && `${summary.overdue} overdue`,
+                      ].filter(Boolean).join(' · ')
+                    : 'Nothing due today'}
+                </>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            <Link
+              to={`/workspace/${currentWorkspace.id}`}
+              className="px-3 py-1.5 text-sm font-medium text-white bg-white/10 hover:bg-white/20 rounded-karya transition-colors flex items-center space-x-1.5"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span>Members</span>
+            </Link>
+            <button
+              onClick={() => setShowCreateWizard(true)}
+              className="px-4 py-1.5 text-sm font-semibold text-karya-blue bg-white hover:bg-white/90 rounded-karya shadow-sm transition-colors flex items-center space-x-1.5"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>New Project</span>
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* ── My task stats ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        {myTasksLoading && myTasks.length === 0
+          ? [0, 1, 2, 3].map((i) => (
+              <div key={i} className={`${CARD_CLASS} h-[118px] animate-pulse`} />
+            ))
+          : [
+              { label: 'Due today', value: summary.dueToday, color: '#4F46E5', icon: STAT_ICONS.today },
+              { label: 'Overdue', value: summary.overdue, color: '#EF4444', icon: STAT_ICONS.overdue },
+              { label: 'In progress', value: summary.inProgress, color: '#3B82F6', icon: STAT_ICONS.progress },
+              { label: 'Completed', value: summary.completed, color: '#22C55E', icon: STAT_ICONS.done },
+            ].map((stat) => <StatTile key={stat.label} {...stat} />)}
+      </div>
+
+      {/* ── Up next ── */}
+      <div className={`${CARD_CLASS} mb-8 overflow-hidden`}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--karya-border)]">
+          <h2 className="text-sm font-bold text-[var(--karya-text-primary)]">Up next</h2>
+          <Link to="/my-tasks" className="text-xs font-semibold text-karya-blue hover:underline">
+            View all →
+          </Link>
+        </div>
+        {myTasksLoading && myTasks.length === 0 ? (
+          <div className="p-5 space-y-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-9 rounded-karya bg-gray-100 dark:bg-white/5 animate-pulse" />
+            ))}
+          </div>
+        ) : summary.upNext.length === 0 ? (
+          <EmptyState title="You're all caught up" message="No open tasks assigned to you." className="py-10" />
+        ) : (
+          <ul className="divide-y divide-[var(--karya-border)]">
+            {summary.upNext.map((task) => {
+              const project = task.list?.board?.project;
+              return (
+                <li key={task.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTaskId(task.id)}
+                    className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-primary-50/60 dark:hover:bg-white/[0.03] transition-colors"
+                  >
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT[task.priority] || PRIORITY_DOT.LOW}`} />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-medium text-[var(--karya-text-primary)] truncate">{task.title}</span>
+                      {project && (
+                        <span className="flex items-center gap-1.5 text-[11px] text-[var(--karya-text-secondary)] mt-0.5 min-w-0">
+                          <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: project.color || '#4F46E5' }} />
+                          <span className="truncate">{project.name}</span>
+                        </span>
+                      )}
+                    </span>
+                    <DueChip task={task} />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
 
       {/* ── Workspace switcher if multiple ── */}
       {workspaces.length > 1 && (
@@ -233,7 +378,13 @@ function Dashboard() {
         </div>
       )}
 
-      {/* ── Projects grid ── */}
+      {/* ── Projects ── */}
+      <h2 className="text-sm font-bold text-[var(--karya-text-primary)] mb-3">
+        Projects
+        {projectsLoaded && (
+          <span className="ml-2 text-xs font-medium text-[var(--karya-text-secondary)]">{projects.length}</span>
+        )}
+      </h2>
       {projectsLoading || !projectsLoaded ? (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-karya-blue" />
@@ -277,6 +428,17 @@ function Dashboard() {
         isOpen={showCreateWizard}
         onClose={() => setShowCreateWizard(false)}
       />
+
+      {/* ── Task detail panel (same pattern as My Tasks) ── */}
+      {selectedTaskId && createPortal(
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          <div className="absolute inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-sm animate-fade-in" onClick={closeTask} />
+          <div className="w-full max-w-2xl bg-[var(--karya-surface)] shadow-2xl relative animate-slide-in-right h-full overflow-y-auto border-l border-[var(--karya-border)]">
+            <TaskDetail taskId={selectedTaskId} isEmbedded onClose={closeTask} />
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

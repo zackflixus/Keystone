@@ -320,7 +320,8 @@ function Sidebar({ isOpen }) {
   const navItems = [
     {
       name: "Home",
-      path: "/",
+      // Logged-in users land on /dashboard ("/" just redirects), so match that.
+      path: "/dashboard",
       exact: true,
       icon: (
         <svg

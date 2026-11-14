@@ -15,6 +15,7 @@ import {
   clearLists,
 } from "../../store/slices/boardSlice";
 import api from "../../services/api";
+import { dueState } from "../../utils/dueDate";
 import {
   createTask,
   moveTask as moveTaskAction,
@@ -1305,9 +1306,11 @@ function ProjectBoard() {
                                       {task.dueDate && (
                                         <span
                                           className={`text-[10px] font-medium flex items-center px-1.5 py-0.5 rounded ${
-                                            new Date(task.dueDate) < new Date()
+                                            dueState(task) === "overdue"
                                               ? "text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400"
-                                              : "text-[var(--karya-text-secondary)] bg-gray-100 dark:bg-gray-700"
+                                              : dueState(task) === "today"
+                                                ? "text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400"
+                                                : "text-[var(--karya-text-secondary)] bg-gray-100 dark:bg-gray-700"
                                           }`}
                                         >
                                           <svg

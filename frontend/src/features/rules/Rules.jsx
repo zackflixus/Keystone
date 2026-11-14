@@ -12,6 +12,7 @@ import { describeTrigger, describeCondition, describeAction } from './ruleConsta
 import RuleBuilder from './RuleBuilder';
 import RuleTemplateGallery from './RuleTemplateGallery';
 import RuleRunHistory from './RuleRunHistory';
+import PageTitle, { PAGE_ICONS } from '../../components/PageTitle';
 
 function Toast({ toast, onDismiss }) {
   if (!toast) return null;
@@ -278,10 +279,11 @@ function Rules() {
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
               Back to project
             </button>
-            <h1 className="text-xl font-bold text-[var(--karya-text-primary)]">Rules</h1>
-            <p className="text-xs text-[var(--karya-text-secondary)] mt-0.5">
-              Automate your workflow: when something happens, do something automatically.
-            </p>
+            <PageTitle
+              icon={PAGE_ICONS.rules}
+              title="Rules"
+              subtitle="Automate your workflow: when something happens, do something automatically."
+            />
           </div>
           {canManageScope && selectedScope !== null && (
             <button onClick={openCreate} className="karya-button-primary flex items-center text-xs px-3 py-2">

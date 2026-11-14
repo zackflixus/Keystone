@@ -2,6 +2,7 @@
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { updateProfile } from '../../store/slices/authSlice';
 import api from '../../services/api';
+import PageTitle, { PAGE_ICONS } from '../../components/PageTitle';
 
 const ROLE_STYLES = {
   OWNER:  { label: 'Owner',  bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300' },
@@ -144,10 +145,7 @@ function Profile() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[var(--karya-text-primary)]">My Profile</h1>
-        <p className="text-sm text-[var(--karya-text-secondary)] mt-1">Manage your personal information</p>
-      </div>
+      <PageTitle icon={PAGE_ICONS.profile} title="My Profile" subtitle="Manage your personal information" className="mb-8" />
 
       <div className="bg-[var(--karya-surface)] border border-karya-border rounded-karya-lg overflow-hidden">
         {/* Avatar section */}

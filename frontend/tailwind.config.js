@@ -62,7 +62,7 @@ export default {
         }
       },
       borderRadius: {
-        'karya': '6px',
+        'karya': '8px',
         'karya-lg': '12px',
       },
       boxShadow: {

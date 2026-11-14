@@ -76,7 +76,9 @@ body {
 }
 
 .karya-button-primary {
-  @apply bg-karya-blue hover:bg-karya-blue-dark text-white font-medium py-1.5 px-4 rounded-karya transition-all duration-200;
+  @apply bg-karya-blue hover:bg-karya-blue-dark text-white font-medium py-1.5 px-4 rounded-karya transition-all duration-200
+    shadow-sm shadow-karya-blue/25 hover:shadow-md hover:shadow-karya-blue/30 active:scale-[0.98]
+    focus:outline-none focus-visible:ring-2 focus-visible:ring-karya-blue/40 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900;
 }
 
 /* Floating popovers: dropdowns, context menus, pickers.
@@ -99,7 +101,9 @@ body {
 }
 
 .karya-input {
-  @apply border border-karya-border dark:border-gray-600 rounded-karya px-3 py-2 bg-white dark:bg-gray-800 text-karya-text-primary dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-karya-blue/20 focus:border-karya-blue transition-all placeholder-gray-400 dark:placeholder-gray-500;
+  @apply border border-karya-border dark:border-gray-600 rounded-karya px-3 py-2 bg-white dark:bg-gray-800 text-karya-text-primary dark:text-gray-100
+    hover:border-gray-300 dark:hover:border-gray-500
+    focus:outline-none focus:ring-4 focus:ring-karya-blue/15 focus:border-karya-blue transition-all placeholder-gray-400 dark:placeholder-gray-500;
 }
 
 @keyframes shake {
@@ -114,11 +118,11 @@ body {
 .animate-shake { animation: shake 0.42s ease-in-out; }
 
 .karya-modal-overlay {
-  @apply fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4;
+  @apply fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4;
 }
 
 .karya-modal {
-  @apply bg-white dark:bg-gray-800 rounded-karya-lg shadow-2xl w-full max-w-md border border-karya-border dark:border-gray-700;
+  @apply bg-white dark:bg-gray-800 rounded-karya-lg shadow-karya-pop w-full max-w-md border border-karya-border dark:border-gray-700 animate-pop-in;
 }
 
 /* ═══════════════════════════════════════════

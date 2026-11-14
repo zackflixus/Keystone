@@ -16,6 +16,7 @@ import {
 import { fetchWorkspace } from '../../store/slices/workspaceSlice';
 import { useRole } from '../../hooks/useRole';
 import api from '../../services/api';
+import PageTitle, { PAGE_ICONS } from '../../components/PageTitle';
 
 // ── Period options ──────────────────────────────────────────────────────────
 const PERIODS = [
@@ -143,12 +144,7 @@ function Reports() {
       {/* ── Header ── */}
       <div className="px-6 pt-6 pb-4 border-b border-[var(--karya-border)] bg-[var(--karya-surface)]">
         <div className="flex items-center justify-between mb-5">
-          <div>
-            <h1 className="text-xl font-bold text-[var(--karya-text-primary)]">{title}</h1>
-            <p className="text-xs text-[var(--karya-text-secondary)] mt-0.5">
-              Showing time logged on assigned tasks
-            </p>
-          </div>
+          <PageTitle icon={PAGE_ICONS.reports} title={title} subtitle="Showing time logged on assigned tasks" />
 
           <div className="flex items-center space-x-2">
             <button

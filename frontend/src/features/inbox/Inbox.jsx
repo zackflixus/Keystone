@@ -4,6 +4,10 @@ import { useAppSelector } from '../../store/hooks';
 import api from '../../services/api';
 import io from 'socket.io-client';
 import TaskDetail from '../tasks/TaskDetail';
+import PageTitle, { PAGE_ICONS } from '../../components/PageTitle';
+import DueChip from '../../components/DueChip';
+import EmptyState from '../../components/EmptyState';
+import { isDoneStatus } from '../../utils/dueDate';
 
 const STATUS_BADGE = {
   TODO:        { label: 'To do',        cls: 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300' },
@@ -121,10 +125,7 @@ function Inbox() {
     <div className="max-w-3xl mx-auto px-6 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--karya-text-primary)]">Inbox</h1>
-          <p className="text-sm text-[var(--karya-text-secondary)] mt-1">Tasks assigned to you</p>
-        </div>
+        <PageTitle icon={PAGE_ICONS.inbox} title="Inbox" subtitle="Tasks assigned to you" />
         {items.length > 0 && (
           <span className="text-[10px] font-bold text-[var(--karya-text-secondary)] bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full">
             {counts.pending} pending
@@ -172,16 +173,12 @@ function Inbox() {
 
       {/* Empty state */}
       {!loading && filtered.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-center bg-[var(--karya-surface)] border border-[var(--karya-border)] rounded-xl">
-          <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-            <svg className="w-8 h-8 text-[var(--karya-text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-            </svg>
-          </div>
-          <p className="font-semibold text-[var(--karya-text-primary)]">No tasks here</p>
-          <p className="text-sm text-[var(--karya-text-secondary)] mt-1.5 max-w-xs">
-            {filter === 'completed' ? 'No completed tasks yet.' : filter === 'pending' ? 'No pending tasks — you\'re all caught up!' : 'Tasks assigned to you will appear here.'}
-          </p>
+        <div className="bg-[var(--karya-surface)] border border-[var(--karya-border)] rounded-xl shadow-karya-card">
+          <EmptyState
+            className="py-16"
+            title="No tasks here"
+            message={filter === 'completed' ? 'No completed tasks yet.' : filter === 'pending' ? 'No pending tasks — you\'re all caught up!' : 'Tasks assigned to you will appear here.'}
+          />
         </div>
       )}
 
@@ -201,7 +198,7 @@ function Inbox() {
                   const projectColor = task.list?.board?.project?.color || '#4F46E5';
                   const projectId = task.list?.board?.projectId || task.list?.board?.project?.id;
                   const status = STATUS_BADGE[task.status] || STATUS_BADGE.TODO;
-                  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'DONE';
+                  const isDone = isDoneStatus(task.status);
 
                   return (
                     <div
@@ -211,9 +208,9 @@ function Inbox() {
                     >
                       {/* Status circle */}
                       <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center mr-3 ${
-                        task.status === 'DONE' ? 'border-green-500 bg-green-500' : 'border-gray-300 dark:border-gray-600 group-hover:border-karya-blue'
+                        isDone ? 'border-green-500 bg-green-500' : 'border-gray-300 dark:border-gray-600 group-hover:border-karya-blue'
                       }`}>
-                        {task.status === 'DONE' && (
+                        {isDone && (
                           <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
@@ -222,7 +219,7 @@ function Inbox() {
 
                       {/* Task info */}
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium truncate ${task.status === 'DONE' ? 'text-[var(--karya-text-secondary)]' : 'text-[var(--karya-text-primary)]'} group-hover:text-karya-blue transition-colors`}>
+                        <p className={`text-sm font-medium truncate ${isDone ? 'text-[var(--karya-text-secondary)]' : 'text-[var(--karya-text-primary)]'} group-hover:text-karya-blue transition-colors`}>
                           {task.title}
                         </p>
                         <div className="flex items-center space-x-1.5 mt-0.5">
@@ -235,11 +232,7 @@ function Inbox() {
 
                       {/* Right side */}
                       <div className="flex items-center space-x-3 ml-4 flex-shrink-0">
-                        {task.dueDate && (
-                          <span className={`text-[11px] font-medium ${isOverdue ? 'text-red-500' : 'text-[var(--karya-text-secondary)]'}`}>
-                            {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </span>
-                        )}
+                        <DueChip task={task} />
                         <div className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT[task.priority] || PRIORITY_DOT.LOW}`} />
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${status.cls}`}>
                           {status.label}

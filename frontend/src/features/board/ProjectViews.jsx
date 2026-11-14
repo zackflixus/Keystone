@@ -3,6 +3,8 @@
 import { useEffect } from 'react';
 import api from '../../services/api';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import StatTile, { CARD_CLASS, STAT_ICONS } from '../../components/StatTile';
+import { isOverdue } from '../../utils/dueDate';
 
 /* ═══════════════════════════════════════════════════════════
    Shared helpers
@@ -34,15 +36,7 @@ function ProgressBar({ value, max, color = '#4F46E5', height = 8, gradient }) {
 }
 
 const BRAND_GRADIENT = 'linear-gradient(90deg, #4F46E5 0%, #7C3AED 100%)';
-const OVERVIEW_CARD = 'bg-[var(--karya-surface)] rounded-karya-lg border border-[var(--karya-border)] shadow-karya-card';
-
-// Heroicons-style outline paths for the overview stat tiles.
-const STAT_ICONS = {
-  total: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
-  done: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
-  progress: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-  overdue: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
-};
+const OVERVIEW_CARD = CARD_CLASS;
 
 /* ═══════════════════════════════════════════════════════════
    OVERVIEW VIEW
@@ -50,7 +44,7 @@ const STAT_ICONS = {
 export function OverviewView({ project, lists, members }) {
   const tasks = getAllTasks(lists);
   const done = tasks.filter(t => t.status === 'DONE').length;
-  const overdue = tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'DONE').length;
+  const overdue = tasks.filter(t => isOverdue(t)).length;
   const total = tasks.length;
 
   return (
@@ -76,16 +70,8 @@ export function OverviewView({ project, lists, members }) {
           { label: 'Completed', value: done, color: '#22c55e', icon: STAT_ICONS.done },
           { label: 'In progress', value: tasks.filter(t => t.status === 'IN_PROGRESS').length, color: '#3b82f6', icon: STAT_ICONS.progress },
           { label: 'Overdue', value: overdue, color: '#ef4444', icon: STAT_ICONS.overdue },
-        ].map(({ label, value, color, icon }) => (
-          <div key={label} className={`${OVERVIEW_CARD} p-4`}>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: `${color}1A`, color }}>
-              <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
-              </svg>
-            </div>
-            <p className="text-3xl font-bold leading-none" style={{ color }}>{value}</p>
-            <p className="text-[10px] font-bold uppercase text-[var(--karya-text-secondary)] tracking-wider mt-2">{label}</p>
-          </div>
+        ].map((stat) => (
+          <StatTile key={stat.label} {...stat} />
         ))}
       </div>
 
@@ -571,7 +557,7 @@ function AddedDashboardWidget({ widget, tasks, onRemove, onEdit, onUpdate, dragH
   const option = optionList.find(item => item.type === widget.type);
   const completed = periodTasks.filter(task => task.status === 'DONE').length;
   const inProgress = periodTasks.filter(task => task.status === 'IN_PROGRESS').length;
-  const overdue = periodTasks.filter(task => task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'DONE').length;
+  const overdue = periodTasks.filter(task => isOverdue(task)).length;
   const periodEntries = tasks.flatMap(task => (task.timeEntries || [])
     .filter(entry => isDateInPeriod(entry.date, range))
     .map(entry => ({ ...entry, billable: task.billable === true })));
@@ -1068,7 +1054,7 @@ export function WorkloadView({ lists, members }) {
         data[name].tasks.push(t);
         if (t.status === 'DONE') data[name].done++;
         if (t.status === 'IN_PROGRESS') data[name].inProgress++;
-        if (t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'DONE') data[name].overdue++;
+        if (isOverdue(t)) data[name].overdue++;
         if (t.estimatedTime) data[name].estimatedMins += t.estimatedTime;
         if (t.actualTime) data[name].actualMins += t.actualTime;
       });
