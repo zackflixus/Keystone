@@ -45,6 +45,18 @@ const PRIORITY_DOT = {
   LOW: "bg-gray-300 dark:bg-gray-600",
 };
 
+// Soft highlight over a project's colour tile so it reads like an app icon.
+const PROJECT_TILE_SHEEN =
+  "linear-gradient(135deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0) 60%)";
+
+// Left edge accent on board cards. LOW stays plain so most cards aren't
+// striped; dark: variants are needed because `.dark *` resets border colors.
+const PRIORITY_EDGE = {
+  HIGH: "border-l-[3px] border-l-red-500 dark:border-l-red-500",
+  MEDIUM: "border-l-[3px] border-l-amber-400 dark:border-l-amber-400",
+  LOW: "",
+};
+
 const MEMBER_COLORS = [
   "#4F46E5",
   "#FC636B",
@@ -750,8 +762,11 @@ function ProjectBoard() {
         <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
           <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
             <div
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-karya flex items-center justify-center text-white font-bold text-sm sm:text-base shadow-sm flex-shrink-0"
-              style={{ backgroundColor: currentProject.color || "#4F46E5" }}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm sm:text-base shadow-sm flex-shrink-0"
+              style={{
+                backgroundColor: currentProject.color || "#4F46E5",
+                backgroundImage: PROJECT_TILE_SHEEN,
+              }}
             >
               {currentProject.name?.charAt(0).toUpperCase()}
             </div>
@@ -1054,7 +1069,7 @@ function ProjectBoard() {
             {canInvite && (
               <button
                 onClick={() => setShowShare(true)}
-                className="flex items-center text-xs px-2 sm:px-3 py-1.5 rounded-karya bg-green-500 hover:bg-green-600 text-white font-semibold transition-colors"
+                className="flex items-center text-xs px-2 sm:px-3 py-1.5 rounded-karya border border-[var(--karya-border)] bg-[var(--karya-surface)] text-[var(--karya-text-primary)] hover:border-karya-blue hover:text-karya-blue font-semibold transition-colors"
               >
                 <svg
                   className="w-3.5 h-3.5 sm:mr-1.5"
@@ -1193,14 +1208,14 @@ function ProjectBoard() {
                 {lists.map((list) => (
                   <div
                     key={list.id}
-                    className="w-72 flex-shrink-0 flex flex-col max-h-full"
+                    className="w-72 flex-shrink-0 flex flex-col max-h-full bg-[#ECEEF7] dark:bg-white/[0.03] rounded-karya-lg p-2"
                   >
-                    <div className="px-2 pb-2 flex items-center justify-between group">
+                    <div className="px-2 pt-1 pb-2 flex items-center justify-between group">
                       <div className="flex items-center space-x-2">
                         <span className="text-xs font-bold uppercase tracking-wider text-[var(--karya-text-secondary)]">
                           {list.name}
                         </span>
-                        <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-[var(--karya-text-secondary)] rounded-full px-1.5 py-0.5 font-medium">
+                        <span className="text-[10px] bg-karya-blue-light text-karya-blue dark:bg-karya-blue/20 dark:text-indigo-300 rounded-full px-1.5 py-0.5 font-semibold">
                           {list.tasks?.length || 0}
                         </span>
                       </div>
@@ -1250,7 +1265,7 @@ function ProjectBoard() {
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
                                   onClick={() => openTask(task.id)}
-                                  className={`karya-card p-3.5 group cursor-pointer ${
+                                  className={`karya-card p-3.5 group cursor-pointer ${PRIORITY_EDGE[task.priority] || ""} ${
                                     snapshot.isDragging
                                       ? "rotate-2 scale-105 shadow-xl ring-2 ring-karya-blue/30 z-50"
                                       : "hover:-translate-y-0.5"

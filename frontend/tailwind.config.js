@@ -39,7 +39,7 @@ export default {
           },
           mint: '#3BE8B0',
           slate: '#6A67CE',
-          bg: '#F9FBFC',
+          bg: '#F5F6FB',
           surface: '#FFFFFF',
           border: '#E8ECEF',
           text: {

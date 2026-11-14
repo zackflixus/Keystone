@@ -18,7 +18,7 @@ function ProjectCard({ project }) {
   return (
     <Link
       to={`/project/${project.id}`}
-      className="group block bg-[var(--karya-surface)] border border-[var(--karya-border)] rounded-karya-lg overflow-hidden hover:shadow-karya-hover hover:-translate-y-0.5 transition-all duration-200"
+      className="group block bg-[var(--karya-surface)] border border-[var(--karya-border)] rounded-karya-lg overflow-hidden shadow-karya-card hover:shadow-karya-hover hover:-translate-y-0.5 transition-all duration-200"
     >
       {/* Color strip */}
       <div className="h-1.5 w-full" style={{ backgroundColor: color }} />
@@ -26,7 +26,11 @@ function ProjectCard({ project }) {
         <div className="flex items-start justify-between mb-3">
           <div
             className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-base shadow-sm"
-            style={{ backgroundColor: color }}
+            style={{
+              backgroundColor: color,
+              // Soft highlight so the tile reads like an app icon
+              backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0) 60%)',
+            }}
           >
             {project.name.charAt(0).toUpperCase()}
           </div>

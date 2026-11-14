@@ -7,7 +7,8 @@
 /* ── Light mode variables ── */
 :root {
   --karya-blue: #4F46E5;
-  --karya-bg: #F8F9FA;
+  /* Faint indigo tint so white cards lift off the page */
+  --karya-bg: #F5F6FB;
   --karya-surface: #FFFFFF;
   /* Floating layer — popovers sit ABOVE the page, so they get their own
      surface + ring instead of reusing --karya-surface (which matches rows). */
@@ -34,11 +35,12 @@
   --karya-border-rgb: 45, 55, 72;
   --karya-text-primary: #F9FAFB;
   --karya-text-secondary: #9CA3AF;
-  --karya-sidebar-bg: #313338;
-  --karya-sidebar-hover: #1A1A2E;
-  --karya-sidebar-active: #2A2A3E;
-  --karya-sidebar-text: #D1D5DB;
-  --karya-sidebar-text-muted: #6B7280;
+  /* Keep the brand indigo in dark mode, a shade deeper than light mode */
+  --karya-sidebar-bg: #17153B;
+  --karya-sidebar-hover: #262262;
+  --karya-sidebar-active: #312E81;
+  --karya-sidebar-text: #C7D2FE;
+  --karya-sidebar-text-muted: #818CF8;
 }
 
 body {

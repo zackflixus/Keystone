@@ -178,11 +178,16 @@ function Sidebar({ isOpen }) {
 
   const renderProjectRow = (project) => {
     const isFavorite = favoriteProjectIds.includes(project.id);
+    const isCurrent = location.pathname === `/project/${project.id}`;
 
     return (
       <div
         key={project.id}
-        className="flex items-center space-x-2.5 px-3 py-1.5 rounded-md transition-colors hover:bg-white/5"
+        className={`flex items-center space-x-2.5 px-3 py-1.5 rounded-md transition-colors ${
+          isCurrent
+            ? "bg-[var(--karya-sidebar-active)] shadow-[inset_3px_0_0_0_#F59E0B]"
+            : "hover:bg-white/5"
+        }`}
       >
         <NavLink
           to={`/project/${project.id}`}
@@ -426,8 +431,8 @@ function Sidebar({ isOpen }) {
               className={({ isActive }) =>
                 `flex items-center space-x-3 px-3 py-2 rounded-md text-sm transition-colors ${
                   isActive
-                    ? "bg-white/10 text-white font-medium"
-                    : "text-[var(--karya-sidebar-text)] hover:bg-white/5 hover:text-white"
+                    ? "bg-[var(--karya-sidebar-active)] text-white font-medium shadow-[inset_3px_0_0_0_#F59E0B]"
+                    : "text-[var(--karya-sidebar-text)] hover:bg-[var(--karya-sidebar-hover)] hover:text-white"
                 }`
               }
             >

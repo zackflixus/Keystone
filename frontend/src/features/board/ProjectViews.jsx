@@ -23,14 +23,26 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function ProgressBar({ value, max, color = '#4F46E5', height = 8 }) {
+// `gradient` (any CSS background) overrides the flat `color` fill.
+function ProgressBar({ value, max, color = '#4F46E5', height = 8, gradient }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
-    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden" style={{ height }}>
-      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color }} />
+    <div className="w-full bg-[#ECEEF7] dark:bg-white/10 rounded-full overflow-hidden" style={{ height }}>
+      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: gradient || color }} />
     </div>
   );
 }
+
+const BRAND_GRADIENT = 'linear-gradient(90deg, #4F46E5 0%, #7C3AED 100%)';
+const OVERVIEW_CARD = 'bg-[var(--karya-surface)] rounded-karya-lg border border-[var(--karya-border)] shadow-karya-card';
+
+// Heroicons-style outline paths for the overview stat tiles.
+const STAT_ICONS = {
+  total: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
+  done: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+  progress: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+  overdue: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
+};
 
 /* ═══════════════════════════════════════════════════════════
    OVERVIEW VIEW
@@ -42,9 +54,10 @@ export function OverviewView({ project, lists, members }) {
   const total = tasks.length;
 
   return (
-    <div className="max-w-4xl space-y-6 pb-8">
+    <div className="max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8 items-start">
+    <div className="lg:col-span-2 space-y-6">
       {/* Project info */}
-      <div className="bg-[var(--karya-surface)] rounded-lg border border-[var(--karya-border)] p-6">
+      <div className={`${OVERVIEW_CARD} p-6`}>
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-bold text-[var(--karya-text-primary)]">{project.name}</h2>
@@ -59,30 +72,35 @@ export function OverviewView({ project, lists, members }) {
       {/* Stats cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { label: 'Total tasks', value: total, color: '#4F46E5' },
-          { label: 'Completed', value: done, color: '#22c55e' },
-          { label: 'In progress', value: tasks.filter(t => t.status === 'IN_PROGRESS').length, color: '#3b82f6' },
-          { label: 'Overdue', value: overdue, color: '#ef4444' },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="bg-[var(--karya-surface)] rounded-lg border border-[var(--karya-border)] p-4">
-            <p className="text-[10px] font-bold uppercase text-[var(--karya-text-secondary)] tracking-wider mb-1">{label}</p>
-            <p className="text-2xl font-bold" style={{ color }}>{value}</p>
+          { label: 'Total tasks', value: total, color: '#4F46E5', icon: STAT_ICONS.total },
+          { label: 'Completed', value: done, color: '#22c55e', icon: STAT_ICONS.done },
+          { label: 'In progress', value: tasks.filter(t => t.status === 'IN_PROGRESS').length, color: '#3b82f6', icon: STAT_ICONS.progress },
+          { label: 'Overdue', value: overdue, color: '#ef4444', icon: STAT_ICONS.overdue },
+        ].map(({ label, value, color, icon }) => (
+          <div key={label} className={`${OVERVIEW_CARD} p-4`}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: `${color}1A`, color }}>
+              <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
+              </svg>
+            </div>
+            <p className="text-3xl font-bold leading-none" style={{ color }}>{value}</p>
+            <p className="text-[10px] font-bold uppercase text-[var(--karya-text-secondary)] tracking-wider mt-2">{label}</p>
           </div>
         ))}
       </div>
 
       {/* Progress */}
-      <div className="bg-[var(--karya-surface)] rounded-lg border border-[var(--karya-border)] p-6">
+      <div className={`${OVERVIEW_CARD} p-6`}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-bold text-[var(--karya-text-primary)]">Project progress</h3>
-          <span className="text-sm font-bold text-[var(--karya-text-primary)]">{total > 0 ? Math.round((done / total) * 100) : 0}%</span>
+          <span className="text-sm font-bold text-karya-blue">{total > 0 ? Math.round((done / total) * 100) : 0}%</span>
         </div>
-        <ProgressBar value={done} max={total} color="#22c55e" height={10} />
+        <ProgressBar value={done} max={total} gradient={BRAND_GRADIENT} height={10} />
         <p className="text-xs text-[var(--karya-text-secondary)] mt-2">{done} of {total} tasks completed</p>
       </div>
 
       {/* Sections breakdown */}
-      <div className="bg-[var(--karya-surface)] rounded-lg border border-[var(--karya-border)] p-6">
+      <div className={`${OVERVIEW_CARD} p-6`}>
         <h3 className="text-sm font-bold text-[var(--karya-text-primary)] mb-4">Sections</h3>
         <div className="space-y-3">
           {(lists || []).map((list, i) => {
@@ -100,9 +118,10 @@ export function OverviewView({ project, lists, members }) {
           })}
         </div>
       </div>
+    </div>
 
-      {/* Members */}
-      <div className="bg-[var(--karya-surface)] rounded-lg border border-[var(--karya-border)] p-6">
+      {/* Members — right column on wide screens */}
+      <div className={`${OVERVIEW_CARD} p-6`}>
         <h3 className="text-sm font-bold text-[var(--karya-text-primary)] mb-4">Project members</h3>
         <div className="space-y-2.5">
           {(members || []).map(m => (
@@ -112,8 +131,8 @@ export function OverviewView({ project, lists, members }) {
                 {m.user?.name?.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[var(--karya-text-primary)]">{m.user?.name}</p>
-                <p className="text-[10px] text-[var(--karya-text-secondary)]">{m.user?.email}</p>
+                <p className="text-sm font-medium text-[var(--karya-text-primary)] truncate">{m.user?.name}</p>
+                <p className="text-[10px] text-[var(--karya-text-secondary)] truncate">{m.user?.email}</p>
               </div>
               <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-[var(--karya-text-secondary)]">{m.projectRole}</span>
             </div>
