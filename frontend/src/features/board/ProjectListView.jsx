@@ -4479,7 +4479,7 @@ function ProjectListView({
             }}
           >
             <div className="relative flex-1 flex flex-col min-h-0">
-              <div className="bg-[var(--karya-surface)] rounded-lg border border-[var(--karya-border)]/50 relative flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="bg-[var(--karya-surface)] rounded-karya-lg border border-[var(--karya-border)]/60 shadow-karya-card relative flex-1 flex flex-col min-h-0 overflow-hidden">
                 {/* ── Single unified scroll viewport: header + body live inside one scroll container.
            This is the only element @hello-pangea/dnd needs to find — both axes scroll here,
            so autoscroll-on-drag and manual-scroll-during-drag both work correctly.
@@ -4493,13 +4493,13 @@ function ProjectListView({
            content width (not just the scroll container's visible viewport),
            otherwise newly-added columns scroll into a transparent area. ── */}
                   <div className="sticky top-0 z-30 rounded-t-lg">
-                    <div className="flex items-stretch border-b border-[var(--karya-border)]/60 w-max min-w-full bg-[var(--karya-surface)]">
+                    <div className="flex items-stretch border-b border-[var(--karya-border)]/60 w-max min-w-full bg-[var(--karya-table-head)]">
                       {/* Name column header */}
                       <div
-                        className="flex-shrink-0 sticky left-0 z-20 bg-[var(--karya-surface)] px-4 py-2 border-r border-[var(--karya-border)]/40 relative flex items-center"
+                        className="flex-shrink-0 sticky left-0 z-20 bg-[var(--karya-table-head)] px-4 py-2 border-r border-[var(--karya-border)]/40 relative flex items-center"
                         style={{ width: cw("name") }}
                       >
-                        <span className="text-[11px] font-medium text-[var(--karya-text-secondary)]">
+                        <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--karya-text-secondary)]">
                           Name
                         </span>
                         <ResizeHandle colKey="name" />
@@ -4513,7 +4513,7 @@ function ProjectListView({
                             className="w-3 h-3 text-[var(--karya-text-secondary)] flex-shrink-0"
                             strokeWidth={1.75}
                           />
-                          <span className="text-[11px] font-medium text-[var(--karya-text-secondary)] truncate">
+                          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--karya-text-secondary)] truncate">
                             Assignee
                           </span>
                           <ResizeHandle colKey="assignee" />
@@ -4528,7 +4528,7 @@ function ProjectListView({
                             className="w-3 h-3 text-[var(--karya-text-secondary)] flex-shrink-0"
                             strokeWidth={1.75}
                           />
-                          <span className="text-[11px] font-medium text-[var(--karya-text-secondary)] truncate">
+                          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--karya-text-secondary)] truncate">
                             Due date
                           </span>
                           <ResizeHandle colKey="dueDate" />
@@ -4543,7 +4543,7 @@ function ProjectListView({
                             className="w-3 h-3 text-[var(--karya-text-secondary)] flex-shrink-0"
                             strokeWidth={1.75}
                           />
-                          <span className="text-[11px] font-medium text-[var(--karya-text-secondary)] truncate">
+                          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--karya-text-secondary)] truncate">
                             Status
                           </span>
                           <ResizeHandle colKey="status" />
@@ -4558,7 +4558,7 @@ function ProjectListView({
                             className="w-3 h-3 text-[var(--karya-text-secondary)] flex-shrink-0"
                             strokeWidth={1.75}
                           />
-                          <span className="text-[11px] font-medium text-[var(--karya-text-secondary)] truncate">
+                          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--karya-text-secondary)] truncate">
                             Priority
                           </span>
                           <ResizeHandle colKey="priority" />
@@ -4573,7 +4573,7 @@ function ProjectListView({
                             className="w-3 h-3 text-[var(--karya-text-secondary)] flex-shrink-0"
                             strokeWidth={1.75}
                           />
-                          <span className="text-[11px] font-medium text-[var(--karya-text-secondary)] truncate">
+                          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--karya-text-secondary)] truncate">
                             Est. time
                           </span>
                           <ResizeHandle colKey="estimatedTime" />
@@ -4588,7 +4588,7 @@ function ProjectListView({
                             className="w-3 h-3 text-[var(--karya-text-secondary)] flex-shrink-0"
                             strokeWidth={1.75}
                           />
-                          <span className="text-[11px] font-medium text-[var(--karya-text-secondary)] truncate">
+                          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--karya-text-secondary)] truncate">
                             Actual time
                           </span>
                           <ResizeHandle colKey="actualTime" />
@@ -4603,7 +4603,7 @@ function ProjectListView({
                             className="w-3 h-3 text-[var(--karya-text-secondary)] flex-shrink-0"
                             strokeWidth={1.75}
                           />
-                          <span className="text-[11px] font-medium text-[var(--karya-text-secondary)] truncate flex-1 min-w-0">
+                          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--karya-text-secondary)] truncate flex-1 min-w-0">
                             {efficiencyFormula === "estOverActual"
                               ? "Efficiency"
                               : "Time Consumed"}
@@ -4641,7 +4641,7 @@ function ProjectListView({
                             className="w-3 h-3 text-[var(--karya-text-secondary)] flex-shrink-0"
                             strokeWidth={1.75}
                           />
-                          <span className="text-[11px] font-medium text-[var(--karya-text-secondary)] truncate">
+                          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--karya-text-secondary)] truncate">
                             Billable
                           </span>
                           <ResizeHandle colKey="billable" />
@@ -4663,7 +4663,7 @@ function ProjectListView({
                                 strokeWidth={1.75}
                               />
                             )}
-                            <span className="text-[11px] font-medium text-[var(--karya-text-secondary)] truncate flex-1 min-w-0">
+                            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--karya-text-secondary)] truncate flex-1 min-w-0">
                               {cf.name}
                             </span>
                             {perm.fieldDelete && (
@@ -4685,7 +4685,7 @@ function ProjectListView({
                       {perm.fieldCreate && (
                         <button
                           onClick={() => setShowFieldPicker(!showFieldPicker)}
-                          className="sticky right-0 w-9 flex-shrink-0 flex items-center justify-center bg-[var(--karya-surface)] border-b border-l border-[var(--karya-border)]/60 text-[var(--karya-text-secondary)] hover:text-[var(--karya-text-primary)] hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
+                          className="sticky right-0 w-9 flex-shrink-0 flex items-center justify-center bg-[var(--karya-table-head)] border-b border-l border-[var(--karya-border)]/60 text-[var(--karya-text-secondary)] hover:text-[var(--karya-text-primary)] hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
                           title="Add field"
                         >
                           <Plus className="w-3.5 h-3.5" strokeWidth={2} />
@@ -4721,11 +4721,11 @@ function ProjectListView({
                                   hoveredSectionRef.current = list.id;
                                 }}
                                 data-just-created={list.id}
-                                className="flex items-stretch border-b border-[var(--karya-border)]/60 bg-gradient-to-b from-gray-50/90 to-gray-50/40 dark:from-[#1a1f2b]/95 dark:to-[#151a23]/80 hover:from-gray-100/80 dark:hover:from-[#1f2533]/95 transition-all duration-180 group/section shadow-[0_1px_0_0_rgba(15,23,42,0.04)] w-max min-w-full"
+                                className="flex items-stretch border-b border-[var(--karya-border)]/60 bg-gradient-to-r from-[#EEF0FF] to-[#F7F7FF] dark:from-[#1d1f3a] dark:to-[#181a2b] hover:from-[#E6E9FF] dark:hover:from-[#222448] transition-all duration-180 group/section shadow-[0_1px_0_0_rgba(15,23,42,0.04)] w-max min-w-full"
                               >
                                 {/* Name cell — holds collapse arrow, title, count, progress bar (bg overrides parent gradient so frozen-left looks clean) */}
                                 <div
-                                  className={`${NAME_COL} flex items-center px-4 py-3`}
+                                  className={`${NAME_COL} flex items-center px-4 py-3 shadow-[inset_3px_0_0_0_#4F46E5]`}
                                   style={{ background: "inherit" }}
                                 >
                                   <button
@@ -4776,21 +4776,19 @@ function ProjectListView({
                                     </span>
                                   )}
 
-                                  <span className="ml-2.5 text-[10px] text-[var(--karya-text-secondary)] bg-gray-200/80 dark:bg-gray-700/70 rounded-full px-2 py-0.5 font-semibold flex-shrink-0">
+                                  <span className="ml-2.5 text-[10px] bg-karya-blue-light text-karya-blue dark:bg-karya-blue/20 dark:text-indigo-300 rounded-full px-2 py-0.5 font-semibold flex-shrink-0">
                                     {total}
                                   </span>
 
                                   {total > 0 && (
                                     <div className="ml-3 flex items-center gap-2 flex-shrink-0">
-                                      <div className="w-24 h-1.5 rounded-full bg-gray-200/80 dark:bg-gray-700/60 overflow-hidden">
+                                      <div className="w-24 h-1.5 rounded-full bg-white/70 dark:bg-white/10 overflow-hidden">
                                         <div
                                           className="h-full rounded-full transition-all duration-500 ease-karya"
                                           style={{
                                             width: `${pct}%`,
                                             background:
-                                              pct === 100
-                                                ? "linear-gradient(90deg,#22C55E,#16A34A)"
-                                                : "linear-gradient(90deg,#4F46E5,#6A67CE)",
+                                              "linear-gradient(90deg,#4F46E5,#7C3AED)",
                                           }}
                                         />
                                       </div>
@@ -5196,9 +5194,9 @@ function ProjectListView({
                                     )
                                       return null;
                                     return (
-                                      <div className="flex items-stretch border-t-2 border-t-[var(--karya-border)] bg-gray-50/80 dark:bg-gray-800/40 w-max min-w-full">
+                                      <div className="flex items-stretch border-t-2 border-t-[var(--karya-border)] bg-[#FAFAFF] dark:bg-white/[0.02] w-max min-w-full">
                                         <div
-                                          className="flex-shrink-0 sticky left-0 z-10 bg-gray-50/80 dark:bg-gray-800/40 px-4 py-1.5 flex items-center gap-2"
+                                          className="flex-shrink-0 sticky left-0 z-10 bg-[#FAFAFF] dark:bg-[#202227] px-4 py-1.5 flex items-center gap-2"
                                           style={{
                                             width:
                                               colWidths["name"] ??
@@ -5435,14 +5433,14 @@ function ProjectListView({
                       if (!hasTotals) return null;
 
                       return (
-                        <div className="flex items-stretch border-t border-[var(--karya-border)]/50 bg-gray-100/50 dark:bg-gray-800/40 font-semibold w-max min-w-full">
+                        <div className="flex items-stretch border-t border-[var(--karya-border)]/50 bg-[#EEF0FF] dark:bg-[#1d1f3a] font-semibold w-max min-w-full">
                           <div
-                            className="flex-shrink-0 sticky left-0 z-10 bg-gray-100/50 dark:bg-gray-800/40 px-4 py-2 border-r border-[var(--karya-border)]/40 flex items-center"
+                            className="flex-shrink-0 sticky left-0 z-10 bg-[#EEF0FF] dark:bg-[#1d1f3a] px-4 py-2 border-r border-[var(--karya-border)]/40 flex items-center"
                             style={{
                               width: colWidths["name"] ?? DEFAULT_NAME_W,
                             }}
                           >
-                            <span className="text-xs font-bold text-[var(--karya-text-primary)] uppercase tracking-wider">
+                            <span className="text-xs font-bold text-[#3730A3] dark:text-indigo-200 uppercase tracking-wider">
                               Total
                             </span>
                           </div>
@@ -5486,7 +5484,7 @@ function ProjectListView({
                                   colWidths["estimatedTime"] ?? DEFAULT_COL_W,
                               }}
                             >
-                              <span className="text-xs font-bold text-[var(--karya-text-primary)]">
+                              <span className="text-xs font-bold text-[#3730A3] dark:text-indigo-200">
                                 {totalEst > 0 ? formatTime(totalEst) : ""}
                               </span>
                             </div>
@@ -5498,7 +5496,7 @@ function ProjectListView({
                                 width: colWidths["actualTime"] ?? DEFAULT_COL_W,
                               }}
                             >
-                              <span className="text-xs font-bold text-[var(--karya-text-primary)]">
+                              <span className="text-xs font-bold text-[#3730A3] dark:text-indigo-200">
                                 {totalAct > 0 ? formatTime(totalAct) : ""}
                               </span>
                             </div>
@@ -5536,7 +5534,7 @@ function ProjectListView({
                               }}
                             >
                               {cfTotals[cf.id] ? (
-                                <span className="text-xs font-bold text-[var(--karya-text-primary)]">
+                                <span className="text-xs font-bold text-[#3730A3] dark:text-indigo-200">
                                   {cf.type === "TIME_TRACKING"
                                     ? formatTime(cfTotals[cf.id])
                                     : cf.type === "NUMBER"

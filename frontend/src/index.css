@@ -10,6 +10,8 @@
   /* Faint indigo tint so white cards lift off the page */
   --karya-bg: #F5F6FB;
   --karya-surface: #FFFFFF;
+  /* List-view column header strip */
+  --karya-table-head: #F3F4FA;
   /* Floating layer — popovers sit ABOVE the page, so they get their own
      surface + ring instead of reusing --karya-surface (which matches rows). */
   --karya-elevated: #FFFFFF;
@@ -29,6 +31,7 @@
 .dark {
   --karya-bg: #111827;
   --karya-surface: #1F2124;
+  --karya-table-head: #24272C;
   --karya-elevated: #2A2D31;
   --karya-elevated-ring: rgba(255, 255, 255, 0.14);
   --karya-border: rgba(255, 255, 255, 0.06);

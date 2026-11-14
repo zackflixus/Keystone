@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+﻿import { useState, useMemo, useId } from 'react';
 
 import { useEffect } from 'react';
 import api from '../../services/api';
@@ -10,6 +10,26 @@ import { isOverdue } from '../../utils/dueDate';
    Shared helpers
    ═══════════════════════════════════════════════════════════ */
 const BAR_COLORS = ['#4F46E5', '#FC636B', '#37A169', '#D69E2E', '#6A67CE', '#3BE8B0', '#F97316', '#EC4899'];
+
+// Keystone chart palette — one source for every chart, tile and legend.
+// Statuses keep their meaning (blue = in progress, emerald = done); neutral
+// metrics (totals, hours, billable, trends) use the brand indigo.
+const CHART = {
+  brand: '#4F46E5',
+  violet: '#7C3AED',
+  todo: '#94A3B8',
+  inProgress: '#3B82F6',
+  review: '#F59E0B',
+  done: '#10B981',
+  overdue: '#EF4444',
+  high: '#EF4444',
+  medium: '#F59E0B',
+  low: '#3B82F6',
+  billable: '#4F46E5',
+  nonBillable: '#C7D2FE',     // bars / pie slices
+  nonBillableLine: '#A5B4FC', // lines need a little more contrast
+  nonBillableText: '#64748B', // numbers on tiles
+};
 
 function getAllTasks(lists) {
   return (lists || []).flatMap(l => l.tasks || []);
@@ -66,10 +86,10 @@ export function OverviewView({ project, lists, members }) {
       {/* Stats cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { label: 'Total tasks', value: total, color: '#4F46E5', icon: STAT_ICONS.total },
-          { label: 'Completed', value: done, color: '#22c55e', icon: STAT_ICONS.done },
-          { label: 'In progress', value: tasks.filter(t => t.status === 'IN_PROGRESS').length, color: '#3b82f6', icon: STAT_ICONS.progress },
-          { label: 'Overdue', value: overdue, color: '#ef4444', icon: STAT_ICONS.overdue },
+          { label: 'Total tasks', value: total, color: CHART.brand, icon: STAT_ICONS.total },
+          { label: 'Completed', value: done, color: CHART.done, icon: STAT_ICONS.done },
+          { label: 'In progress', value: tasks.filter(t => t.status === 'IN_PROGRESS').length, color: CHART.inProgress, icon: STAT_ICONS.progress },
+          { label: 'Overdue', value: overdue, color: CHART.overdue, icon: STAT_ICONS.overdue },
         ].map((stat) => (
           <StatTile key={stat.label} {...stat} />
         ))}
@@ -328,21 +348,34 @@ function PeriodSelect({ value, onChange, label }) {
 }
 
 const TASK_STATUS_CHART = [
-  { key: 'TODO', label: 'To do', color: '#6b7280' },
-  { key: 'IN_PROGRESS', label: 'In progress', color: '#3b82f6' },
-  { key: 'REVIEW', label: 'Review', color: '#eab308' },
-  { key: 'DONE', label: 'Completed', color: '#22c55e' },
+  { key: 'TODO', label: 'To do', color: CHART.todo },
+  { key: 'IN_PROGRESS', label: 'In progress', color: CHART.inProgress },
+  { key: 'REVIEW', label: 'Review', color: CHART.review },
+  { key: 'DONE', label: 'Completed', color: CHART.done },
 ];
+
+// "X% Completed" for the donut centre of a status breakdown.
+function completedCenter(statusData) {
+  const total = statusData.reduce((sum, item) => sum + item.value, 0);
+  const done = statusData.find(item => item.key === 'DONE' || item.label === 'Completed')?.value || 0;
+  return { value: `${total > 0 ? Math.round((done / total) * 100) : 0}%`, label: 'Completed' };
+}
 
 function TaskStatusPie({ tasks }) {
   const data = TASK_STATUS_CHART.map(status => ({
     ...status,
     value: tasks.filter(task => task.status === status.key).length,
   }));
-  return <SummaryPieChart data={data} ariaLabel={`Task status distribution for ${tasks.length} tasks`} />;
+  return <SummaryPieChart data={data} center={completedCenter(data)} ariaLabel={`Task status distribution for ${tasks.length} tasks`} />;
 }
 
-function SummaryPieChart({ data, ariaLabel }) {
+// Brand bar fill: indigo at the top fading into violet.
+const BILLABLE_BAR = `linear-gradient(180deg, ${CHART.brand}, ${CHART.violet})`;
+
+// Donut ring: the conic gradient is masked to a ring so the centre can hold a headline number.
+const DONUT_MASK = 'radial-gradient(farthest-side, transparent 62%, #000 63%)';
+
+function SummaryPieChart({ data, ariaLabel, center }) {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   let position = 0;
   const segments = data.filter(item => item.value > 0).map(item => {
@@ -355,12 +388,20 @@ function SummaryPieChart({ data, ariaLabel }) {
   return (
     <div className="grid h-full grid-cols-2 items-center gap-6" role="img" aria-label={ariaLabel}>
       <div className="flex h-full items-center justify-center">
-        <div className="aspect-square w-44 max-w-[85%] rounded-full shadow-sm" style={{ background }} />
+        <div className="relative aspect-square w-44 max-w-[85%]">
+          <div className="absolute inset-0 rounded-full" style={{ background, WebkitMask: DONUT_MASK, mask: DONUT_MASK }} />
+          {center && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-2xl font-extrabold leading-none text-[var(--karya-text-primary)]">{center.value}</span>
+              <span className="mt-1 text-[10px] font-bold uppercase tracking-wider text-[var(--karya-text-secondary)]">{center.label}</span>
+            </div>
+          )}
+        </div>
       </div>
       <div className="w-full space-y-3 border-l border-[var(--karya-border)] pl-6">
         {data.map(item => (
           <div key={item.label} className="flex items-center gap-2 text-xs">
-            <span className="h-3 w-3 flex-shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
+            <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
             <span className="min-w-0 flex-1 truncate text-[var(--karya-text-secondary)]">{item.label}</span>
             <span className="font-bold text-[var(--karya-text-primary)]">
               {total > 0 ? Math.round((item.value / total) * 100) : 0}%
@@ -421,8 +462,8 @@ function BillingBarChart({ tasks, period }) {
   return (
     <div>
       <div className="mb-3 flex items-center gap-5 text-[10px] text-[var(--karya-text-secondary)]">
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-green-500" />Billable</span>
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-gray-400" />Non-billable</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: BILLABLE_BAR }} />Billable</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART.nonBillable }} />Non-billable</span>
       </div>
       <div className="flex w-full">
         <div className="relative mt-5 h-[185px] w-11 flex-shrink-0 border-r border-[var(--karya-border)] pr-2">
@@ -442,8 +483,8 @@ function BillingBarChart({ tasks, period }) {
           {data.map((item, index) => (
             <div key={item.label} className="flex h-full min-w-0 flex-col items-center justify-end">
               <div className="flex h-[185px] w-full items-end justify-center gap-[2px] px-[2px]">
-                <div title={`${item.billable} billable hours`} className="w-1/3 max-w-5 rounded-t bg-green-500 transition-all duration-500" style={{ height: `${item.billable > 0 ? Math.max((item.billable / axisMax) * 100, 4) : 1}%` }} />
-                <div title={`${item.nonBillable} non-billable hours`} className="w-1/3 max-w-5 rounded-t bg-gray-400 transition-all duration-500" style={{ height: `${item.nonBillable > 0 ? Math.max((item.nonBillable / axisMax) * 100, 4) : 1}%` }} />
+                <div title={`${item.billable} billable hours`} className="w-1/3 max-w-5 rounded-t-md transition-all duration-500" style={{ height: `${item.billable > 0 ? Math.max((item.billable / axisMax) * 100, 4) : 1}%`, background: BILLABLE_BAR }} />
+                <div title={`${item.nonBillable} non-billable hours`} className="w-1/3 max-w-5 rounded-t-md transition-all duration-500" style={{ height: `${item.nonBillable > 0 ? Math.max((item.nonBillable / axisMax) * 100, 4) : 1}%`, backgroundColor: CHART.nonBillable }} />
               </div>
               <span className="h-10 origin-top-left -rotate-45 whitespace-nowrap pt-1 text-[8px] text-[var(--karya-text-secondary)]">
                 {data.length > 20 ? (index % 2 === 0 ? item.label : '') : item.label}
@@ -499,7 +540,15 @@ function SimpleBarChart({ data }) {
       {data.map(item => (
         <div key={item.label} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2">
           <span className="text-xs font-bold text-[var(--karya-text-primary)]">{item.displayValue ?? item.value}</span>
-          <div className="w-1/2 max-w-16 rounded-t-md transition-all duration-500" style={{ height: `${item.value > 0 ? Math.max((item.value / max) * 75, 5) : 1}%`, backgroundColor: item.color }} />
+          <div
+            className="w-1/2 max-w-16 rounded-t-lg transition-all duration-500"
+            style={{
+              height: `${item.value > 0 ? Math.max((item.value / max) * 75, 5) : 1}%`,
+              backgroundColor: item.color,
+              // Lighter top edge for a softer, modern bar
+              backgroundImage: `linear-gradient(180deg, color-mix(in srgb, ${item.color} 70%, white), ${item.color})`,
+            }}
+          />
           <span className="h-8 text-center text-[9px] font-semibold uppercase text-[var(--karya-text-secondary)]">{item.label}</span>
         </div>
       ))}
@@ -512,7 +561,7 @@ function TotalHoursBarChart({ tasks, period }) {
     label: item.label,
     value: item.billable + item.nonBillable,
     displayValue: `${(item.billable + item.nonBillable).toFixed(1)}h`,
-    color: '#4F46E5',
+    color: CHART.brand,
   }));
   return <SimpleBarChart data={data} />;
 }
@@ -526,13 +575,29 @@ function MultiLineChart({ data, series, valueSuffix = '' }) {
   const axisMax = max <= 5 ? Math.ceil(max) : Math.ceil(max / 5) * 5;
   const yFor = value => height - padY - ((Number(value) || 0) / axisMax) * (height - padY * 2);
   const xFor = index => data.length <= 1 ? width / 2 : padX + (index / (data.length - 1)) * (width - padX * 2);
+  // A single series gets a soft gradient area underneath; with several series
+  // overlapping fills get muddy, so they stay as plain lines.
+  const areaId = `line-area-${useId().replace(/:/g, '')}`;
+  const single = series.length === 1 && data.length > 1 ? series[0] : null;
+  const singleArea = single
+    ? `${xFor(0)},${height - padY} ${data.map((item, index) => `${xFor(index)},${yFor(item[single.key])}`).join(' ')} ${xFor(data.length - 1)},${height - padY}`
+    : '';
 
   return (
     <div className="pt-3">
       <div className="mb-2 flex flex-wrap items-center gap-x-5 gap-y-1 px-3 text-[10px] text-[var(--karya-text-secondary)]">
-        {series.map(line => <span key={line.key} className="flex items-center gap-1.5"><span className="h-0.5 w-4" style={{ backgroundColor: line.color }} />{line.label}</span>)}
+        {series.map(line => <span key={line.key} className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded-full" style={{ backgroundColor: line.color }} />{line.label}</span>)}
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full" role="img" aria-label="Line chart">
+        {single && (
+          <defs>
+            <linearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor={single.color} stopOpacity="0.3" />
+              <stop offset="1" stopColor={single.color} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+        )}
+        {single && <polygon points={singleArea} fill={`url(#${areaId})`} />}
         {[1, 0.75, 0.5, 0.25, 0].map(fraction => {
           const value = axisMax * fraction;
           const y = yFor(value);
@@ -564,38 +629,38 @@ function AddedDashboardWidget({ widget, tasks, onRemove, onEdit, onUpdate, dragH
   const totalMinutes = periodEntries.reduce((sum, entry) => sum + (Number(entry.minutes) || 0), 0);
   const billableMinutes = periodEntries.filter(entry => entry.billable).reduce((sum, entry) => sum + (Number(entry.minutes) || 0), 0);
   const cardData = widget.type === 'summary' ? [
-    { label: 'Total tasks', value: periodTasks.length, color: '#4F46E5' },
-    { label: 'Completed tasks', value: completed, color: '#22c55e' },
-    { label: 'In progress tasks', value: inProgress, color: '#3b82f6' },
-    { label: 'Overdue tasks', value: overdue, color: '#ef4444' },
+    { label: 'Total tasks', value: periodTasks.length, color: CHART.brand },
+    { label: 'Completed tasks', value: completed, color: CHART.done },
+    { label: 'In progress tasks', value: inProgress, color: CHART.inProgress },
+    { label: 'Overdue tasks', value: overdue, color: CHART.overdue },
   ] : widget.type === 'priority' ? [
-    { label: 'High priority', value: periodTasks.filter(task => task.priority === 'HIGH').length, color: '#ef4444' },
-    { label: 'Medium priority', value: periodTasks.filter(task => task.priority === 'MEDIUM').length, color: '#eab308' },
-    { label: 'Low priority', value: periodTasks.filter(task => task.priority === 'LOW').length, color: '#3b82f6' },
+    { label: 'High priority', value: periodTasks.filter(task => task.priority === 'HIGH').length, color: CHART.high },
+    { label: 'Medium priority', value: periodTasks.filter(task => task.priority === 'MEDIUM').length, color: CHART.medium },
+    { label: 'Low priority', value: periodTasks.filter(task => task.priority === 'LOW').length, color: CHART.low },
   ] : widget.type === 'billing' ? [
-    { label: 'Total hours', value: `${(totalMinutes / 60).toFixed(1)}h`, color: '#4F46E5' },
-    { label: 'Billable hours', value: `${(billableMinutes / 60).toFixed(1)}h`, color: '#22c55e' },
-    { label: 'Non-billable hours', value: `${((totalMinutes - billableMinutes) / 60).toFixed(1)}h`, color: '#6b7280' },
+    { label: 'Total hours', value: `${(totalMinutes / 60).toFixed(1)}h`, color: CHART.brand },
+    { label: 'Billable hours', value: `${(billableMinutes / 60).toFixed(1)}h`, color: CHART.billable },
+    { label: 'Non-billable hours', value: `${((totalMinutes - billableMinutes) / 60).toFixed(1)}h`, color: CHART.nonBillableText },
   ] : [
-    { label: 'To do', value: periodTasks.filter(task => task.status === 'TODO').length, color: '#6b7280' },
-    { label: 'In progress', value: inProgress, color: '#3b82f6' },
-    { label: 'Review', value: periodTasks.filter(task => task.status === 'REVIEW').length, color: '#eab308' },
-    { label: 'Completed', value: completed, color: '#22c55e' },
+    { label: 'To do', value: periodTasks.filter(task => task.status === 'TODO').length, color: CHART.todo },
+    { label: 'In progress', value: inProgress, color: CHART.inProgress },
+    { label: 'Review', value: periodTasks.filter(task => task.status === 'REVIEW').length, color: CHART.review },
+    { label: 'Completed', value: completed, color: CHART.done },
   ];
   const priorityBarData = [
-    { label: 'High', value: periodTasks.filter(task => task.priority === 'HIGH').length, color: '#ef4444' },
-    { label: 'Medium', value: periodTasks.filter(task => task.priority === 'MEDIUM').length, color: '#eab308' },
-    { label: 'Low', value: periodTasks.filter(task => task.priority === 'LOW').length, color: '#3b82f6' },
+    { label: 'High', value: periodTasks.filter(task => task.priority === 'HIGH').length, color: CHART.high },
+    { label: 'Medium', value: periodTasks.filter(task => task.priority === 'MEDIUM').length, color: CHART.medium },
+    { label: 'Low', value: periodTasks.filter(task => task.priority === 'LOW').length, color: CHART.low },
   ];
   const statusBarData = [
-    { label: 'To do', value: periodTasks.filter(task => task.status === 'TODO').length, color: '#6b7280' },
-    { label: 'In progress', value: inProgress, color: '#3b82f6' },
-    { label: 'Review', value: periodTasks.filter(task => task.status === 'REVIEW').length, color: '#eab308' },
-    { label: 'Completed', value: completed, color: '#22c55e' },
+    { label: 'To do', value: periodTasks.filter(task => task.status === 'TODO').length, color: CHART.todo },
+    { label: 'In progress', value: inProgress, color: CHART.inProgress },
+    { label: 'Review', value: periodTasks.filter(task => task.status === 'REVIEW').length, color: CHART.review },
+    { label: 'Completed', value: completed, color: CHART.done },
   ];
   const billingPieData = [
-    { label: 'Billable', value: billableMinutes, color: '#22c55e' },
-    { label: 'Non-billable', value: totalMinutes - billableMinutes, color: '#9ca3af' },
+    { label: 'Billable', value: billableMinutes, color: CHART.billable },
+    { label: 'Non-billable', value: totalMinutes - billableMinutes, color: CHART.nonBillable },
   ];
   const billingBuckets = buildBillingTrend(tasks, period);
   const lineData = billingBuckets.map(bucket => {
@@ -615,23 +680,23 @@ function AddedDashboardWidget({ widget, tasks, onRemove, onEdit, onUpdate, dragH
     };
   });
   const lineSeries = widget.type === 'billing' ? [
-    { key: 'billable', label: 'Billable', color: '#22c55e' },
-    { key: 'nonBillable', label: 'Non-billable', color: '#9ca3af' },
+    { key: 'billable', label: 'Billable', color: CHART.billable },
+    { key: 'nonBillable', label: 'Non-billable', color: CHART.nonBillableLine },
   ] : widget.type === 'total_hours' ? [
     { key: 'totalHours', label: 'Total hours', color: '#4F46E5' },
   ] : widget.type === 'priority' ? [
-    { key: 'high', label: 'High', color: '#ef4444' },
-    { key: 'medium', label: 'Medium', color: '#eab308' },
-    { key: 'low', label: 'Low', color: '#3b82f6' },
+    { key: 'high', label: 'High', color: CHART.high },
+    { key: 'medium', label: 'Medium', color: CHART.medium },
+    { key: 'low', label: 'Low', color: CHART.low },
   ] : [
-    { key: 'todo', label: 'To do', color: '#6b7280' },
-    { key: 'inProgress', label: 'In progress', color: '#3b82f6' },
-    { key: 'review', label: 'Review', color: '#eab308' },
-    { key: 'done', label: 'Completed', color: '#22c55e' },
+    { key: 'todo', label: 'To do', color: CHART.todo },
+    { key: 'inProgress', label: 'In progress', color: CHART.inProgress },
+    { key: 'review', label: 'Review', color: CHART.review },
+    { key: 'done', label: 'Completed', color: CHART.done },
   ];
 
   return (
-    <section className="h-full bg-[var(--karya-surface)] rounded-lg border border-[var(--karya-border)] p-5">
+    <section className="h-full bg-[var(--karya-surface)] rounded-karya-lg border border-[var(--karya-border)] shadow-karya-card p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-bold text-[var(--karya-text-primary)]">{option.title}</h3>
@@ -652,11 +717,28 @@ function AddedDashboardWidget({ widget, tasks, onRemove, onEdit, onUpdate, dragH
       </div>
       {widget.kind === 'card' || !widget.kind ? (
         <div className={`grid gap-3 ${cardData.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
-          {cardData.map(item => <div key={item.label} className="rounded-lg border border-[var(--karya-border)] bg-gray-50/60 p-4 dark:bg-gray-800/40"><p className="text-2xl font-bold" style={{ color: item.color }}>{item.value}</p><p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--karya-text-secondary)]">{item.label}</p></div>)}
+          {cardData.map(item => (
+            // Tinted by the metric's own colour; lightened in dark mode so it stays readable.
+            <div
+              key={item.label}
+              style={{ '--stat': item.color }}
+              className="rounded-xl p-4 border border-[color-mix(in_srgb,var(--stat)_18%,transparent)] bg-[color-mix(in_srgb,var(--stat)_7%,transparent)] dark:bg-[color-mix(in_srgb,var(--stat)_14%,transparent)]"
+            >
+              <p className="text-2xl font-bold text-[var(--stat)] dark:text-[color-mix(in_srgb,var(--stat)_60%,white)]">{item.value}</p>
+              <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--karya-text-secondary)]">{item.label}</p>
+            </div>
+          ))}
         </div>
       ) : widget.kind === 'pie' ? (
         <SummaryPieChart
           data={widget.type === 'billing' ? billingPieData : widget.type === 'priority' ? priorityBarData : statusBarData}
+          center={
+            widget.type === 'billing'
+              ? { value: `${(totalMinutes / 60).toFixed(1)}h`, label: 'Logged' }
+              : widget.type === 'priority'
+                ? { value: periodTasks.length, label: periodTasks.length === 1 ? 'Task' : 'Tasks' }
+                : completedCenter(statusBarData)
+          }
           ariaLabel={`${option.title} pie chart`}
         />
       ) : widget.kind === 'line' ? (
@@ -706,6 +788,8 @@ function buildTaskTrend(tasks, period) {
 }
 
 function TaskTrendLineChart({ tasks, period }) {
+  // Gradient ids are document-global — keep each chart's own.
+  const areaId = `trend-area-${useId().replace(/:/g, '')}`;
   const data = buildTaskTrend(tasks, period).map(item => {
     const total = item.completed + item.incomplete;
     return {
@@ -733,10 +817,16 @@ function TaskTrendLineChart({ tasks, period }) {
   return (
     <div className="pt-4">
       <div className="mb-2 flex items-center gap-5 px-3 text-[10px] text-[var(--karya-text-secondary)]">
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-green-500" />Completed</span>
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm border border-[var(--karya-text-secondary)]" />Incomplete</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART.brand }} />Completed</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full border border-[var(--karya-text-secondary)]" />Incomplete</span>
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} className="h-52 w-full" role="img" aria-label="Completed and incomplete tasks over time">
+        <defs>
+          <linearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor={CHART.brand} stopOpacity="0.35" />
+            <stop offset="1" stopColor={CHART.violet} stopOpacity="0" />
+          </linearGradient>
+        </defs>
         {[100, 75, 50, 25, 0].map(value => {
           const y = height - padY - (value / 100) * (height - padY * 2);
           return (
@@ -746,11 +836,11 @@ function TaskTrendLineChart({ tasks, period }) {
             </g>
           );
         })}
-        {completedArea && <polygon points={completedArea} fill="#22c55e" opacity="0.25" />}
+        {completedArea && <polygon points={completedArea} fill={`url(#${areaId})`} />}
         {completedPoints.length > 1 && (
-          <polyline points={completedPoints.map(point => `${point.x},${point.y}`).join(' ')} fill="none" stroke="#22c55e" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+          <polyline points={completedPoints.map(point => `${point.x},${point.y}`).join(' ')} fill="none" stroke={CHART.brand} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
         )}
-        {completedPoints.length === 1 && <line x1={padX} y1={completedPoints[0].y} x2={width - padX} y2={completedPoints[0].y} stroke="#22c55e" strokeWidth="3" strokeLinecap="round" />}
+        {completedPoints.length === 1 && <line x1={padX} y1={completedPoints[0].y} x2={width - padX} y2={completedPoints[0].y} stroke={CHART.brand} strokeWidth="3" strokeLinecap="round" />}
         {incompletePoints.length > 1 && (
           <polyline points={incompletePoints.map(point => `${point.x},${point.y}`).join(' ')} fill="none" stroke="var(--karya-text-secondary)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
         )}
@@ -1109,11 +1199,11 @@ export function WorkloadView({ lists, members }) {
               <div className="px-2">
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-5 overflow-hidden relative">
                   <div className="h-full rounded-full transition-all duration-500 flex items-center"
-                    style={{ width: `${pct}%`, backgroundColor: isOverloaded ? '#ef4444' : d.overdue > 0 ? '#eab308' : '#22c55e' }}>
+                    style={{ width: `${pct}%`, backgroundColor: isOverloaded ? CHART.overdue : d.overdue > 0 ? CHART.review : CHART.done }}>
                   </div>
                   {d.inProgress > 0 && (
                     <div className="absolute top-0 h-full rounded-full opacity-30"
-                      style={{ width: `${(d.inProgress / maxTasks) * 100}%`, backgroundColor: '#3b82f6' }} />
+                      style={{ width: `${(d.inProgress / maxTasks) * 100}%`, backgroundColor: CHART.inProgress }} />
                   )}
                 </div>
               </div>
